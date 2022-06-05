@@ -1,6 +1,8 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
+require 'date'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -12,6 +14,30 @@ def clean_phonenumber(number)
   return number.rjust(11, '1')[1..10] if (number[0] == '1' && number.length == 11) || number.length == 10
 
   "INVALID-NUMBER"
+end
+
+def get_hour(regdate)
+  Time.strptime(regdate, '%m/%d/%Y %k:%M').hour
+end
+
+def get_day(regdate )
+  day = Time.strptime(regdate, '%m/%d/%Y %k:%M').wday
+  case day
+  when 0
+    'sunday'
+  when 1
+    'monday'
+  when 2
+    'tuesday'
+  when 3
+    'wednesday'
+  when 4
+    'thursday'
+  when 5
+    'friday'
+  else
+    'saturday'
+  end
 end
 
 def legislators_by_zipcode(zip)
@@ -49,6 +75,8 @@ contents = CSV.open(
 
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
+hour_hash = Hash.new(0)
+week_hash = Hash.new(0)
 
 contents.each do |row|
     
@@ -57,12 +85,18 @@ contents.each do |row|
   # zipcode = clean_zipcode(row[:zipcode])
   # legislators = legislators_by_zipcode(zipcode)
   number = row[:homephone]
+  reg_hour = get_hour(row[:regdate])
+  reg_day = get_day(row[:regdate])
+  hour_hash[reg_hour] += 1
+  week_hash[reg_day] += 1
   # form_letter = erb_template.result(binding)
 
   # save_thank_you_letter(id,form_letter)
   puts clean_phonenumber(number)
 end
+def largest_hash_key(hash)
+  hash.max_by{|k,v| v}
+end
 
-
-
-
+puts "Most people are registered at #{largest_hash_key(hour_hash)[0]}"
+puts "Most people are registered in #{largest_hash_key(week_hash)[0]}"
